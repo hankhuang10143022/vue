@@ -1,0 +1,143 @@
+pipeline {
+    agent { label 'ansible-master' }
+    
+    environment {   //設定變數   key = value
+      
+      IMAGE_NAME = "test"  //image名稱
+      IMAGE_TAG  = "yyyyMMdd-BUILD_NUMBER" // tag以日期+buildid為格式
+      REPO_NAME  = " 602708357953.dkr.ecr.ap-northeast-1.amazonaws.com" //repostory的fqdn
+      
+      //以下為target host 被部屬機器的設定
+       TARGET_USER =  "hank"
+       TARGET_HOST_IP = "192.168.5.12"
+      
+    }
+    
+    
+    stages {
+        
+        stage("init vars") {
+          steps {
+            script {
+                env.CURRENT_DATE = sh(
+                script: "date +%Y%m%d",
+                returnStdout: true
+                 ).trim()
+            }
+           }
+        }
+        
+        
+
+        stage('GitLab project') {
+            steps {
+                git branch: 'main',
+                credentialsId: 'gilab-zihuan',
+                url: 'https://gitlab.zihuan.com/root/vue.git'
+            }
+        }
+
+        stage('Check workspace') {
+            steps {
+                sh 'pwd'
+                sh 'ls -R .'
+            }
+        }
+
+             
+        
+        // stage("build image") {
+        //   steps {
+        //           sh '''
+        //              echo "Build image: ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}"
+        //              docker build -t ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER} .
+        //              '''                     
+        //       }
+        //   }
+          
+          
+        stage("login ECR") {
+          steps {
+                  withAWS(credentials: 'ecr-user', region: 'ap-northeast-1') {
+                   sh '''
+                      aws ecr get-login-password \
+                       | docker login \
+                      --username AWS \
+                      --password-stdin ${REPO_NAME}
+                       
+                     ''' 
+                  }
+              }
+           }
+           
+        //   stage("push image") {
+        //       steps{
+        //           //將image推到ECR
+        //           sh 'docker push ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
+                   
+        //           //清理image
+        //           sh'docker rmi ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
+        //       }
+        //   }
+        
+         stage('check aws cli in target host') {
+             steps {
+                dir('ansible') {   // <-- 必須放在 steps 裡
+                    ansiblePlaybook(
+                        disableHostKeyChecking: true,
+                        installation: 'ansible',
+                        inventory: 'inventory',
+                        playbook: 'aws-cli-ubuntu.yaml'
+                    )
+                }
+            }
+        }
+        
+        
+           
+           
+             stage("Targeted host login ECR") {
+               steps {
+                 withAWS(credentials: 'ecr-user', region: 'ap-northeast-1') {
+                   sshagent(credentials: ['192.168.5.12-dev']) { //sshagent 只能用private key
+                     sh '''
+                         # 在 Jenkins agent 取得 ECR token
+                         TOKEN=$(aws ecr get-login-password --region ap-northeast-1)
+
+                         # 將 token 傳給 targeted host 做 docker login
+                         ssh  ${TARGET_USER}@${TARGET_HOST_IP} "
+                         echo '$TOKEN' | docker login \
+                         --username AWS \
+                         --password-stdin ${REPO_NAME}
+                         "
+                        '''
+                        }
+                      }
+                   }
+                 }
+
+
+          stage('check aws cli') {
+             steps {
+                dir('ansible') {   // <-- 必須放在 steps 裡
+                    ansiblePlaybook(
+                        disableHostKeyChecking: true,
+                        installation: 'ansible',
+                        inventory: 'inventory',
+                        playbook: 'test-ansible.yaml'
+                    )
+                }
+            }
+        }
+        
+        
+        
+           
+           
+           
+
+
+
+    }
+}
+
