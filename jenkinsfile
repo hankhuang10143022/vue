@@ -117,18 +117,7 @@ pipeline {
                  }
 
 
-          stage('check aws cli') {
-             steps {
-                dir('ansible') {   // <-- 必須放在 steps 裡
-                    ansiblePlaybook(
-                        disableHostKeyChecking: true,
-                        installation: 'ansible',
-                        inventory: 'inventory',
-                        playbook: 'test-ansible.yaml'
-                    )
-                }
-            }
-        }
+         
         
         
         
