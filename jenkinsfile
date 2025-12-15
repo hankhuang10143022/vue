@@ -46,14 +46,14 @@ pipeline {
 
              
         
-        // stage("build image") {
-        //   steps {
-        //           sh '''
-        //              echo "Build image: ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}"
-        //              docker build -t ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER} .
-        //              '''                     
-        //       }
-        //   }
+         stage("build image") {
+           steps {
+                   sh '''
+                      echo "Build image: ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}"
+                      docker build -t ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER} .
+                      '''                     
+               }
+           }
           
           
         stage("login ECR") {
@@ -70,15 +70,15 @@ pipeline {
               }
            }
            
-        //   stage("push image") {
-        //       steps{
-        //           //將image推到ECR
-        //           sh 'docker push ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
+           stage("push image") {
+               steps{
+                   //將image推到ECR
+                   sh 'docker push ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
                    
-        //           //清理image
-        //           sh'docker rmi ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
-        //       }
-        //   }
+                   //清理image
+                   sh'docker rmi ${REPO_NAME}/${IMAGE_NAME}:${CURRENT_DATE}-${BUILD_NUMBER}'
+               }
+           }
         
          stage('check aws cli in target host') {
              steps {
