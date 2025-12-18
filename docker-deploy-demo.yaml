@@ -1,0 +1,41 @@
+---
+- name: delpoy docker with docker compose
+  hosts: dev
+  vars:  #設定變數
+    user: baasid             #targeted host的使用者
+    project_dir: /opt/vue/   #專案目錄docker-compose.yaml放置路徑
+  tasks:
+
+    - name: Create a project if it does not exist
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0755'
+
+    - name: Copy docker-compose.yaml to project dir
+      ansible.builtin.copy:
+        src: ../docker-compose-test.yaml
+        dest: "{{ project_dir }}/docker-compose.yaml"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0744'
+
+    - name: create .env      #測試用，實際不會使用
+      ansible.builtin.copy:
+        dest: "{{ project_dir }}.env"
+        content: |
+          image_name=602708357953.dkr.ecr.ap-northeast-1.amazonaws.com/test:dev-20251218-51
+          hello world
+        mode: '0644'
+
+    - name: Create and start services
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        register: output
+
+
+    - name: print status
+      ansible.builtin.debug:
+        var:  output
