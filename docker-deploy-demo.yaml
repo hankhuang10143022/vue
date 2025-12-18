@@ -27,13 +27,13 @@
         dest: "{{ project_dir }}.env"
         content: |
           image_name=602708357953.dkr.ecr.ap-northeast-1.amazonaws.com/test:dev-20251218-51
-          hello world
         mode: '0644'
 
     - name: Create and start services
+      become: false                     #全域環境有用become: ture 但部屬這段先false
       community.docker.docker_compose_v2:
         project_src: "{{ project_dir }}"
-        register: output
+      register: output
 
 
     - name: print status
